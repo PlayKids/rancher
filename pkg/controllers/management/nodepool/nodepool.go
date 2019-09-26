@@ -23,6 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	pkdsKillMePleaseTaint = "pkds.it/kill-me-please"
+)
+
 var (
 	nameRegexp       = regexp.MustCompile("^(.*?)([0-9]+)$")
 	unReachableTaint = v1.Taint{
@@ -276,7 +280,7 @@ func (c *Controller) createOrCheckNodes(nodePool *v3.NodePool, simulate bool) (b
 	for len(nodes) > quantity {
 		sort.Sort(byHostname(nodes))
 
-		toDelete := nodes[len(nodes)-1]
+		toDelete := selectNodeForDeletion(nodes)
 
 		changed = true
 		if !simulate {
@@ -298,6 +302,18 @@ func (c *Controller) createOrCheckNodes(nodePool *v3.NodePool, simulate bool) (b
 	}
 
 	return changed, nil
+}
+
+func selectNodeForDeletion(nodes []*v3.Node) *v3.Node {
+	for _, node := range nodes {
+		for _, taint := range node.Spec.InternalNodeSpec.Taints {
+			if taint.Key == pkdsKillMePleaseTaint {
+				return node
+			}
+		}
+	}
+
+	return nodes[len(nodes)-1]
 }
 
 func needRoleUpdate(node *v3.Node, nodePool *v3.NodePool) bool {
