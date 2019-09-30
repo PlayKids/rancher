@@ -2,80 +2,94 @@ package noderemove
 
 import (
 	"context"
-	"fmt"
 	"github.com/rancher/rancher/pkg/ref"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
-	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
-	dnrTaintKey = "pkds.it/do-not-resuscitate"
-	clusterAutoScalerTaintKey = "ToBeDeletedByClusterAutoscaler"
+	PleaseKillMeAnnotation = "nodes.pkds.it/please-kill-me"
 )
 
-type nodeRemove struct {
-	nodePoolController	v3.NodePoolController
-	nodePoolLister 		v3.NodePoolLister
-	nodePools			v3.NodePoolInterface
-}
-
 func Register(ctx context.Context, management *config.ManagementContext) {
-	n := &nodeRemove{
-		nodePoolController: management.Management.NodePools("").Controller(),
-		nodePoolLister: management.Management.NodePools("").Controller().Lister(),
-		nodePools: management.Management.NodePools(""),
+	nprc := &nodePoolRemoveController{
+		nodePools: 	management.Management.NodePools(""),
+		nodeLister:	management.Management.Nodes("").Controller().Lister(),
 	}
 
-	management.Management.Nodes("").AddLifecycle(ctx, "nodepool-noderemove", n)
+	management.Management.NodePools("").AddLifecycle(ctx, "nodepool-noderemove", nprc)
 }
 
-func (n *nodeRemove) Create(obj *v3.Node) (runtime.Object, error) {
+// NodePool Lifecycle
+
+type nodePoolRemoveController struct {
+	nodePools	v3.NodePoolInterface
+	nodeLister	v3.NodeLister
+}
+
+func (n *nodePoolRemoveController) Create(obj *v3.NodePool) (runtime.Object, error) {
 	return obj, nil
 }
 
-func (n *nodeRemove) Remove(obj *v3.Node) (runtime.Object, error) {
-	//if obj == nil {
-	//	return nil, nil
-	//}
-	//
-	//for _, t := range obj.Spec.InternalNodeSpec.Taints {
-	//	if t.Key == dnrTaintKey || t.Key == clusterAutoScalerTaintKey {
-	//		return n.scaleDownNodePool(obj, t)
-	//	}
-	//}
-
+func (n *nodePoolRemoveController) Remove(obj *v3.NodePool) (runtime.Object, error) {
 	return obj, nil
 }
 
-func (n *nodeRemove) scaleDownNodePool(obj *v3.Node, taint v1.Taint) (runtime.Object, error) {
-	namespace, name := ref.Parse(obj.Spec.NodePoolName)
-
-	if namespace == "" || name == "" {
-		return nil, fmt.Errorf("unable to determine node pool of node %s", obj.Status.NodeName)
-	}
-
-	np, err := n.nodePoolLister.Get(namespace, name)
+func (n *nodePoolRemoveController) Updated(obj *v3.NodePool) (runtime.Object, error) {
+	nodes, err := n.listNodes(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	logrus.Infof("Will resize node pool %s due to removal of node %s with taint %s=%s:%s",
-		np.Spec.DisplayName, taint.Key, taint.Value, taint.Effect, obj.Status.NodeName)
+	nodesToRemove := make([]*v3.Node, 0)
 
-	updated := np.DeepCopy()
-	updated.Spec.Quantity--
+	for _, node := range nodes {
+		if HasRemovalAnnotation(node) {
+			nodesToRemove = append(nodesToRemove, node)
+		}
+	}
 
-	_, err = n.nodePools.Update(updated)
+	if len(nodesToRemove) == 0 {
+		return obj, nil
+	}
+
+	updated, err := n.nodePools.GetNamespaced(obj.Namespace, obj.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return obj, nil
+	updated.Spec.Quantity = len(nodes) - len(nodesToRemove)
+
+	return updated, nil
 }
 
-func (n *nodeRemove) Updated(obj *v3.Node) (runtime.Object, error) {
-	return obj, nil
+func (n *nodePoolRemoveController) listNodes(nodePool *v3.NodePool) ([]*v3.Node, error) {
+	allNodes, err := n.nodeLister.List(nodePool.Namespace, labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []*v3.Node
+	for _, node := range allNodes {
+		_, nodePoolName := ref.Parse(node.Spec.NodePoolName)
+
+		if nodePoolName == nodePool.Name {
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes, nil
+}
+
+func HasRemovalAnnotation(node *v3.Node) bool {
+	for k, v := range node.Status.NodeAnnotations {
+		if k == PleaseKillMeAnnotation && v == "true" {
+			return true
+		}
+	}
+
+	return false
 }
