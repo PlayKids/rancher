@@ -86,7 +86,7 @@ func (n *nodePoolRemoveController) listNodes(nodePool *v3.NodePool) ([]*v3.Node,
 }
 
 func HasRemovalAnnotation(node *v3.Node) bool {
-	for k, v := range node.Status.NodeAnnotations {
+	for k, v := range node.ObjectMeta.Annotations {
 		if k == PleaseKillMeAnnotation && v == "true" {
 			return true
 		}
