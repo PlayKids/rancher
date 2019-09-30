@@ -10,10 +10,10 @@ import (
 
 	"reflect"
 
+	"github.com/rancher/rancher/pkg/controllers/management/noderemove"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/rke/services"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
-	"github.com/rancher/rancher/pkg/controllers/management/noderemove"
 	"github.com/rancher/types/config"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
