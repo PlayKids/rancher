@@ -407,6 +407,7 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 			clusterField := schema.ResourceFields["clusterId"]
 			clusterField.Type = "reference[cluster]"
 			schema.ResourceFields["clusterId"] = clusterField
+			schema.ResourceActions["pleaseKillMe"] = types.Action{}
 			schema.ResourceActions["cordon"] = types.Action{}
 			schema.ResourceActions["uncordon"] = types.Action{}
 			schema.ResourceActions["stopDrain"] = types.Action{}
