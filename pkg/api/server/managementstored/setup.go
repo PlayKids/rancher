@@ -418,10 +418,13 @@ func NodeTypes(schemas *types.Schemas, management *config.ScaledContext) error {
 		SecretStore: secretStore,
 	}
 
+	actionWrapper := &node.ActionWrapper{
+		NodeClient: management.Management.Nodes(""),
+	}
+
 	schema = schemas.Schema(&managementschema.Version, client.NodeType)
 	schema.Formatter = node.Formatter
 	schema.LinkHandler = machineHandler.LinkHandler
-	actionWrapper := node.ActionWrapper{}
 	schema.ActionHandler = actionWrapper.ActionHandler
 	return nil
 }
