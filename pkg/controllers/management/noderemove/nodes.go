@@ -6,6 +6,7 @@ import (
 	"github.com/rancher/rancher/pkg/ref"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +18,9 @@ const (
 
 func Register(ctx context.Context, management *config.ManagementContext) {
 	nprc := &nodePoolRemoveController{
-		nodePools: 	management.Management.NodePools(""),
-		nodeLister:	management.Management.Nodes("").Controller().Lister(),
+		nodePoolController:	management.Management.NodePools("").Controller(),
+		nodePools: 			management.Management.NodePools(""),
+		nodeLister:			management.Management.Nodes("").Controller().Lister(),
 	}
 
 	management.Management.NodePools("").AddLifecycle(ctx, "nodepool-noderemove", nprc)
@@ -27,8 +29,9 @@ func Register(ctx context.Context, management *config.ManagementContext) {
 // NodePool Lifecycle
 
 type nodePoolRemoveController struct {
-	nodePools	v3.NodePoolInterface
-	nodeLister	v3.NodeLister
+	nodePoolController	v3.NodePoolController
+	nodePools			v3.NodePoolInterface
+	nodeLister			v3.NodeLister
 }
 
 func (n *nodePoolRemoveController) Create(obj *v3.NodePool) (runtime.Object, error) {
@@ -62,7 +65,20 @@ func (n *nodePoolRemoveController) Updated(obj *v3.NodePool) (runtime.Object, er
 		return nil, err
 	}
 
-	updated.Spec.Quantity = len(nodes) - len(nodesToRemove)
+	if updated.Spec.Quantity != len(nodes) {
+		logrus.Infof("Another update is in progress for %s, will skip for now", updated.Spec.HostnamePrefix)
+		n.nodePoolController.Enqueue(updated.Namespace, updated.Namespace)
+
+		return updated, nil
+	}
+
+	logrus.Infof("Found %d nodes to remove from %s", len(nodesToRemove), obj.Spec.HostnamePrefix)
+
+	desiredQuantity := len(nodes) - len(nodesToRemove)
+	logrus.Infof("Changing node quantity of %s from %d to %d",
+		obj.Spec.HostnamePrefix, updated.Spec.Quantity, desiredQuantity)
+
+	updated.Spec.Quantity = desiredQuantity
 
 	return updated, nil
 }
