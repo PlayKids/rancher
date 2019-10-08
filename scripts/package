@@ -4,14 +4,14 @@ set -e
 source $(dirname $0)/version
 
 ARCH=${ARCH:-"amd64"}
-SYSTEM_CHART_DEFAULT_BRANCH=${SYSTEM_CHART_DEFAULT_BRANCH:-"release-v2.2"}
+SYSTEM_CHART_DEFAULT_BRANCH=${SYSTEM_CHART_DEFAULT_BRANCH:-"playkids"}
 SUFFIX=""
 [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
 
 cd $(dirname $0)/../package
 
 TAG=${TAG:-${VERSION}${SUFFIX}}
-REPO=${REPO:-rancher}
+REPO=${REPO:-027396584751.dkr.ecr.us-east-1.amazonaws.com/playkids-xd}
 
 if echo $TAG | grep -q dirty; then
     TAG=dev
