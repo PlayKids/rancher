@@ -244,8 +244,8 @@ func (c *Controller) createOrCheckNodes(nodePool *v3.NodePool, simulate bool) (b
 	}
 
 	for len(nodes) > quantity {
-		indexToDelete	:= selectNodeForDeletion(nodes)
-		toDelete 		:= nodes[indexToDelete]
+		indexToDelete := selectNodeForDeletion(nodes)
+		toDelete := nodes[indexToDelete]
 
 		changed = true
 		if !simulate {
@@ -282,7 +282,7 @@ func selectNodeForDeletion(nodes []*v3.Node) int {
 		return nodes[i].Spec.RequestedHostname < nodes[j].Spec.RequestedHostname
 	})
 
-	return len(nodes)-1
+	return len(nodes) - 1
 }
 
 func needRoleUpdate(node *v3.Node, nodePool *v3.NodePool) bool {

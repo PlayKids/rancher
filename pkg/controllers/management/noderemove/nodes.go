@@ -18,9 +18,9 @@ const (
 
 func Register(ctx context.Context, management *config.ManagementContext) {
 	nprc := &nodePoolRemoveController{
-		nodePoolController:	management.Management.NodePools("").Controller(),
-		nodePools: 			management.Management.NodePools(""),
-		nodeLister:			management.Management.Nodes("").Controller().Lister(),
+		nodePoolController: management.Management.NodePools("").Controller(),
+		nodePools:          management.Management.NodePools(""),
+		nodeLister:         management.Management.Nodes("").Controller().Lister(),
 	}
 
 	management.Management.NodePools("").AddLifecycle(ctx, "nodepool-noderemove", nprc)
@@ -29,9 +29,9 @@ func Register(ctx context.Context, management *config.ManagementContext) {
 // NodePool Lifecycle
 
 type nodePoolRemoveController struct {
-	nodePoolController	v3.NodePoolController
-	nodePools			v3.NodePoolInterface
-	nodeLister			v3.NodeLister
+	nodePoolController v3.NodePoolController
+	nodePools          v3.NodePoolInterface
+	nodeLister         v3.NodeLister
 }
 
 func (n *nodePoolRemoveController) Create(obj *v3.NodePool) (runtime.Object, error) {

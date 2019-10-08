@@ -92,7 +92,7 @@ func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	}
 }
 
-type ActionWrapper struct{
+type ActionWrapper struct {
 	NodeClient v3.NodeInterface
 }
 
