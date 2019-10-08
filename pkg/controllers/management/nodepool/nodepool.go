@@ -10,6 +10,7 @@ import (
 
 	"reflect"
 
+	"github.com/rancher/rancher/pkg/controllers/management/noderemove"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/rke/services"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
@@ -243,18 +244,17 @@ func (c *Controller) createOrCheckNodes(nodePool *v3.NodePool, simulate bool) (b
 	}
 
 	for len(nodes) > quantity {
-		sort.Slice(nodes, func(i, j int) bool {
-			return nodes[i].Spec.RequestedHostname < nodes[j].Spec.RequestedHostname
-		})
-
-		toDelete := nodes[len(nodes)-1]
+		indexToDelete := selectNodeForDeletion(nodes)
+		toDelete := nodes[indexToDelete]
 
 		changed = true
 		if !simulate {
 			c.deleteNode(toDelete, 0)
 		}
 
+		nodes[indexToDelete] = nodes[len(nodes)-1]
 		nodes = nodes[:len(nodes)-1]
+
 		delete(byName, toDelete.Spec.RequestedHostname)
 	}
 
@@ -269,6 +269,20 @@ func (c *Controller) createOrCheckNodes(nodePool *v3.NodePool, simulate bool) (b
 	}
 
 	return changed, nil
+}
+
+func selectNodeForDeletion(nodes []*v3.Node) int {
+	for i := range nodes {
+		if noderemove.HasRemovalAnnotation(nodes[i]) {
+			return i
+		}
+	}
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Spec.RequestedHostname < nodes[j].Spec.RequestedHostname
+	})
+
+	return len(nodes) - 1
 }
 
 func needRoleUpdate(node *v3.Node, nodePool *v3.NodePool) bool {

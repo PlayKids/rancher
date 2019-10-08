@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/rancher/norman/api/access"
 	"github.com/rancher/norman/api/handler"
@@ -19,7 +21,9 @@ import (
 	"github.com/rancher/norman/types"
 	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/norman/types/values"
+	"github.com/rancher/rancher/pkg/controllers/management/noderemove"
 	"github.com/rancher/rancher/pkg/encryptedstore"
+	"github.com/rancher/rancher/pkg/ref"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	managementschema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
 	client "github.com/rancher/types/client/management/v3"
@@ -83,12 +87,19 @@ func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	} else {
 		resource.AddAction(apiContext, "cordon")
 	}
+	if err := apiContext.AccessControl.CanDo(v3.NodeGroupVersionKind.Group, v3.NodeResource.Name, "delete", apiContext, resource.Values, apiContext.Schema); err == nil {
+		resource.AddAction(apiContext, "pleaseKillMe")
+	}
 }
 
-type ActionWrapper struct{}
+type ActionWrapper struct {
+	NodeClient v3.NodeInterface
+}
 
 func (a ActionWrapper) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
 	switch actionName {
+	case "pleaseKillMe":
+		return a.pleaseKillMe(actionName, apiContext)
 	case "cordon":
 		return cordonUncordonNode(actionName, apiContext, true)
 	case "uncordon":
@@ -98,6 +109,36 @@ func (a ActionWrapper) ActionHandler(actionName string, action *types.Action, ap
 	case "stopDrain":
 		return drainNode(actionName, apiContext, true)
 	}
+	return nil
+}
+
+func (a ActionWrapper) pleaseKillMe(actionName string, apiContext *types.APIContext) error {
+	var nodeBySchema map[string]interface{}
+	if err := access.ByID(apiContext, apiContext.Version, apiContext.Type, apiContext.ID, &nodeBySchema); err != nil {
+		return err
+	}
+
+	if err := apiContext.AccessControl.CanDo(v3.NodeGroupVersionKind.Group, v3.NodeResource.Name, "delete", apiContext, nodeBySchema, apiContext.Schema); err != nil {
+		return err
+	}
+
+	ns, name := ref.Parse(apiContext.ID)
+
+	node, err := a.NodeClient.GetNamespaced(ns, name, v1.GetOptions{})
+	if err != nil {
+		return httperror.NewAPIError(httperror.InvalidReference, "Error accessing node")
+	}
+
+	if noderemove.HasRemovalAnnotation(node) {
+		return httperror.NewAPIError(httperror.InvalidAction, fmt.Sprintf("Node %s already marked to be killed", apiContext.ID))
+	}
+
+	node.Annotations[noderemove.PleaseKillMeAnnotation] = "true"
+	_, err = a.NodeClient.Update(node)
+	if err != nil {
+		return httperror.NewAPIError(httperror.ServerError, fmt.Sprintf("Error marking node %s to be killed: %s", apiContext.ID, err.Error()))
+	}
+
 	return nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/management/multiclusterapp"
 	"github.com/rancher/rancher/pkg/controllers/management/node"
 	"github.com/rancher/rancher/pkg/controllers/management/nodepool"
+	"github.com/rancher/rancher/pkg/controllers/management/noderemove"
 	"github.com/rancher/rancher/pkg/controllers/management/podsecuritypolicy"
 	"github.com/rancher/rancher/pkg/controllers/management/usercontrollers"
 	"github.com/rancher/types/config"
@@ -44,6 +45,7 @@ func Register(ctx context.Context, management *config.ManagementContext, manager
 	kontainerdriver.Register(ctx, management)
 	nodedriver.Register(ctx, management)
 	nodepool.Register(ctx, management)
+	noderemove.Register(ctx, management)
 	cloudcredential.Register(ctx, management)
 	node.Register(ctx, management)
 	podsecuritypolicy.Register(ctx, management)
