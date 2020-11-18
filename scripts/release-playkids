@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+PLAYKIDS_REPO=027396584751.dkr.ecr.us-east-1.amazonaws.com/playkids-xd
+IMAGES=(
+  rancher
+  rancher-agent
+  rancher-runtime
+)
+
+cd $(dirname $0)
+
+./ci
+
+source ./version
+
+for IMAGE in "${IMAGES[@]}"; do
+  docker tag "rancher/$IMAGE:$TAG" "$PLAYKIDS_REPO/$IMAGE:$TAG"
+  docker push "$PLAYKIDS_REPO/$IMAGE:$TAG"
+done

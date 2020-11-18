@@ -65,9 +65,9 @@ var (
 	UIBanners                         = NewSetting("ui-banners", "{}")
 	UIDefaultLanding                  = NewSetting("ui-default-landing", "")
 	UIFeedBackForm                    = NewSetting("ui-feedback-form", "")
-	UIIndex                           = NewSetting("ui-index", "https://releases.rancher.com/ui/latest2/index.html")
+	UIIndex                           = NewSetting("ui-index", "https://releases.rancher.com/ui/2.5.0/index.html")
 	UIPath                            = NewSetting("ui-path", "/usr/share/rancher/ui")
-	UIDashboardIndex                  = NewSetting("ui-dashboard-index", "https://releases.rancher.com/dashboard/latest/index.html")
+	UIDashboardIndex                  = NewSetting("ui-dashboard-index", "https://releases.rancher.com/dashboard/v2.5.0/index.html")
 	UIDashboardPath                   = NewSetting("ui-dashboard-path", "/usr/share/rancher/ui-dashboard")
 	UIPreferred                       = NewSetting("ui-preferred", "ember")
 	UIOfflinePreferred                = NewSetting("ui-offline-preferred", "dynamic")
@@ -80,7 +80,7 @@ var (
 	AuthUserInfoResyncCron            = NewSetting("auth-user-info-resync-cron", "0 0 * * *")
 	AuthUserSessionTTLMinutes         = NewSetting("auth-user-session-ttl-minutes", "960")   // 16 hours
 	AuthUserInfoMaxAgeSeconds         = NewSetting("auth-user-info-max-age-seconds", "3600") // 1 hour
-	APIUIVersion                      = NewSetting("api-ui-version", "1.1.6")                // Please update the CATTLE_API_UI_VERSION in package/Dockerfile when updating the version here.
+	APIUIVersion                      = NewSetting("api-ui-version", "1.1.9")                // Please update the CATTLE_API_UI_VERSION in package/Dockerfile when updating the version here.
 	RotateCertsIfExpiringInDays       = NewSetting("rotate-certs-if-expiring-in-days", "7")  // 7 days
 	ClusterTemplateEnforcement        = NewSetting("cluster-template-enforcement", "false")
 	InitialDockerRootDir              = NewSetting("initial-docker-root-dir", "/var/lib/docker")
