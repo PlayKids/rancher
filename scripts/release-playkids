@@ -10,7 +10,8 @@ IMAGES=(
 
 cd $(dirname $0)
 
-./ci
+./build
+./package
 
 source ./version
 
