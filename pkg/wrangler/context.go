@@ -9,6 +9,8 @@ import (
 
 	istiov1alpha3api "github.com/knative/pkg/apis/istio/v1alpha3"
 	prommonitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/rancher/lasso/pkg/cache"
+	client2 "github.com/rancher/lasso/pkg/client"
 	"github.com/rancher/lasso/pkg/controller"
 	catalogv1 "github.com/rancher/rancher/pkg/apis/catalog.cattle.io/v1"
 	clusterv3api "github.com/rancher/rancher/pkg/apis/cluster.cattle.io/v3"
@@ -23,6 +25,7 @@ import (
 	managementv3 "github.com/rancher/rancher/pkg/generated/controllers/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/generated/controllers/project.cattle.io"
 	projectv3 "github.com/rancher/rancher/pkg/generated/controllers/project.cattle.io/v3"
+	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
 	"github.com/rancher/steve/pkg/accesscontrol"
 	"github.com/rancher/steve/pkg/client"
 	"github.com/rancher/steve/pkg/server"
@@ -35,6 +38,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -135,8 +139,23 @@ func (w *Context) Start(ctx context.Context) error {
 	return nil
 }
 
+func newSharedControllerFactory(config *rest.Config) (controller.SharedControllerFactory, error) {
+	cf, err := client2.NewSharedClientFactory(config, &client2.SharedClientFactoryOptions{
+		Scheme: Scheme,
+	})
+	if err != nil {
+		return nil, err
+	}
+	opts := &controller.SharedControllerFactoryOptions{
+		KindWorkers: map[schema.GroupVersionKind]int{
+			v3.NodeGroupVersionKind: 50,
+		},
+	}
+	return controller.NewSharedControllerFactory(cache.NewSharedCachedFactory(cf, nil), opts), nil
+}
+
 func NewContext(ctx context.Context, lockID string, clientConfig clientcmd.ClientConfig, restConfig *rest.Config) (*Context, error) {
-	controllerFactory, err := controller.NewSharedControllerFactoryFromConfig(restConfig, Scheme)
+	controllerFactory, err := newSharedControllerFactory(restConfig)
 	if err != nil {
 		return nil, err
 	}
